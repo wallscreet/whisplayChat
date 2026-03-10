@@ -12,11 +12,15 @@ global_image_data = None
 image_filepath = None
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--image", default="example/data/test.png", help="Path to the image file (default: example/data/test.png)")
+parser.add_argument("--image", default="example/data/wallscreet.png", help="Path to the image file (default: example/data/test.png)")
 
 args = parser.parse_args()
 
 image_filepath = args.image
+
+def on_button_pressed():
+    print("Button Pressed!")
+    
 
 try:
     global_image_data = load_jpg_as_rgb565(
