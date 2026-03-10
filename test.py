@@ -12,7 +12,7 @@ global_image_data = None
 image_filepath = None
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--image", default="example/data/wallscreet.png", help="Path to the image file (default: example/data/test.png)")
+parser.add_argument("--image", default="example/data/wallscreet.jpg", help="Path to the image file (default: example/data/test.png)")
 
 args = parser.parse_args()
 
