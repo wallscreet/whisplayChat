@@ -26,6 +26,3 @@ try:
     print(f"Image {os.path.basename(image_filepath)} loaded and displayed.")
 except Exception as e:
     print(f"Failed to load image from {image_filepath}: {e}")
-
-finally:
-    board.cleanup()
