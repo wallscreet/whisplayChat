@@ -9,7 +9,7 @@ def main():
     time.sleep(10)
     print("[Simulated release]")
     audio.stop_input_stream()
-    audio.cleanup()
+    #audio.cleanup()
 
 if __name__ == "__main__":
     main()
