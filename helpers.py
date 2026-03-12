@@ -188,7 +188,7 @@ class AudioHelper:
         self._listening = False
         self._capture_thread: Optional[threading.Thread] = None
 
-        self.temp_file = "/tmp/last_utterance.wav"
+        self.temp_file = "/test_audio_file.wav"
 
     def _find_card(self) -> int:
         """Auto-detect WM8960 card number"""
