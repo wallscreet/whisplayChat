@@ -112,7 +112,7 @@ class ScreenHelper:
         """Generate and cache common screens at startup"""
         # Idle / Ready screen
         self._cache["idle"] = self._make_text_image(
-            main_text="READY",
+            text="READY",
             sub_text="Hold button to talk",
             bg_color=(0, 0, 40),
             text_color=(100, 180, 255)
@@ -120,7 +120,7 @@ class ScreenHelper:
 
         # Listening / Recording screen
         self._cache["listening"] = self._make_text_image(
-            main_text="● LISTENING",
+            text="● LISTENING",
             sub_text="Release to send",
             bg_color=(60, 0, 0),
             text_color=(255, 80, 80)
@@ -128,7 +128,7 @@ class ScreenHelper:
 
         # Processing / Thinking screen
         self._cache["processing"] = self._make_text_image(
-            main_text="🤔...",
+            text="🤔...",
             sub_text="Juliet thinking...",
             bg_color=(20, 20, 40),
             text_color=(180, 180, 255)
