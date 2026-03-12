@@ -181,7 +181,7 @@ class AudioHelper:
         self._setup_mixer()
 
         self.p = pyaudio.PyAudio()
-        self.audio_queue = queue.Queue(maxsize=200)  # buffer ~8 seconds max
+        self.audio_queue = queue.Queue(maxsize=0)  # buffer ~8 seconds max
 
         self.input_stream: Optional[pyaudio.Stream] = None
         self.output_stream: Optional[pyaudio.Stream] = None
@@ -325,8 +325,13 @@ class AudioHelper:
             while self._listening:
                 data = self.input_stream.read(self.chunk_size, exception_on_overflow=False)
                 chunk_count += 1
-                self.audio_queue.put_nowait(data)
-
+                #self.audio_queue.put_nowait(data)
+                try:
+                    self.audio_queue.put_nowait(data)
+                except queue.Full:
+                    if self.debug:
+                        print("[DEBUG] Queue full — dropping chunk")
+                
                 if self.debug and frames is not None:
                     frames.append(data)
 
