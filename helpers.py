@@ -1,6 +1,7 @@
 import queue
 import subprocess
 import threading
+import time
 from typing import Optional
 import wave
 
@@ -226,10 +227,31 @@ class AudioHelper:
         if self.debug:
             print(f"AudioHelper: WM8960 mixer configured (card {card})")
 
+    # def start_input_stream(self):
+    #     """Start capturing microphone audio and feeding the queue (called on button press)"""
+    #     if self._listening:
+    #         return  # already running
+
+    #     try:
+    #         self.input_stream = self.p.open(
+    #             format=pyaudio.paInt16,
+    #             channels=self.channels,
+    #             rate=self.sample_rate,
+    #             input=True,
+    #             frames_per_buffer=self.chunk_size
+    #         )
+    #         self._listening = True
+    #         self._capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
+    #         self._capture_thread.start()
+
+    #         if self.debug:
+    #             print("AudioHelper: Input stream started")
+    #     except Exception as e:
+    #         print(f"AudioHelper: Failed to start input stream: {e}")
     def start_input_stream(self):
-        """Start capturing microphone audio and feeding the queue (called on button press)"""
         if self._listening:
-            return  # already running
+            print("[DEBUG] Already listening, ignoring start")
+            return
 
         try:
             self.input_stream = self.p.open(
@@ -239,51 +261,92 @@ class AudioHelper:
                 input=True,
                 frames_per_buffer=self.chunk_size
             )
+            print(f"[DEBUG] Input stream opened successfully (rate={self.sample_rate})")
             self._listening = True
             self._capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
             self._capture_thread.start()
-
-            if self.debug:
-                print("AudioHelper: Input stream started")
+            print("[DEBUG] Capture thread STARTED")
         except Exception as e:
-            print(f"AudioHelper: Failed to start input stream: {e}")
+            print(f"[DEBUG] start_input_stream FAILED: {type(e).__name__}: {e}")
 
+    # def stop_input_stream(self):
+    #     """Stop capturing (called on button release)"""
+    #     self._listening = False
+    #     if self._capture_thread and self._capture_thread.is_alive():
+    #         self._capture_thread.join(timeout=1.0)
+
+    #     if self.input_stream:
+    #         try:
+    #             self.input_stream.stop_stream()
+    #             self.input_stream.close()
+    #             self.input_stream = None
+    #         except Exception as e:
+    #             print(f"AudioHelper: Error closing input stream: {e}")
+
+    #     if self.debug:
+    #         print("AudioHelper: Input stream stopped")
     def stop_input_stream(self):
-        """Stop capturing (called on button release)"""
+        print("[DEBUG] stop_input_stream called")
         self._listening = False
         if self._capture_thread and self._capture_thread.is_alive():
-            self._capture_thread.join(timeout=1.0)
+            print("[DEBUG] Waiting for capture thread to finish...")
+            self._capture_thread.join(timeout=2.0)
+            if self._capture_thread.is_alive():
+                print("[WARNING] Capture thread did NOT exit within timeout")
+            else:
+                print("[DEBUG] Capture thread joined successfully")
 
-        if self.input_stream:
-            try:
-                self.input_stream.stop_stream()
-                self.input_stream.close()
-                self.input_stream = None
-            except Exception as e:
-                print(f"AudioHelper: Error closing input stream: {e}")
+    # def _capture_loop(self):
+    #     """Background thread: read mic chunks → queue (and optional debug save)"""
+    #     frames = []  # only used if debug=True
+    #     try:
+    #         while self._listening:
+    #             data = self.input_stream.read(self.chunk_size, exception_on_overflow=False)
+    #             self.audio_queue.put_nowait(data)
 
-        if self.debug:
-            print("AudioHelper: Input stream stopped")
+    #             if self.debug:
+    #                 frames.append(data)
 
+    #         # After loop ends → optional debug save
+    #         if self.debug and frames:
+    #             self._save_debug_wav(frames)
+    #     except Exception as e:
+    #         print(f"AudioHelper: Capture loop error: {e}")
+    #     finally:
+    #         if self.debug:
+    #             print("AudioHelper: Capture loop ended")
     def _capture_loop(self):
-        """Background thread: read mic chunks → queue (and optional debug save)"""
-        frames = []  # only used if debug=True
+        print("[DEBUG] _capture_loop ENTERED")
+        frames = [] if self.debug else None
+        chunk_count = 0
+        start_time = time.time()
+
         try:
             while self._listening:
                 data = self.input_stream.read(self.chunk_size, exception_on_overflow=False)
+                chunk_count += 1
                 self.audio_queue.put_nowait(data)
 
-                if self.debug:
+                if self.debug and frames is not None:
                     frames.append(data)
 
-            # After loop ends → optional debug save
+                if chunk_count % 50 == 0:
+                    elapsed = time.time() - start_time
+                    print(f"[DEBUG] Captured {chunk_count} chunks ({elapsed:.1f}s elapsed)")
+
+            elapsed = time.time() - start_time
+            print(f"[DEBUG] _capture_loop EXITED normally after {chunk_count} chunks ({elapsed:.1f}s)")
+
             if self.debug and frames:
+                print(f"[DEBUG] Saving debug WAV with {len(frames)} frames")
                 self._save_debug_wav(frames)
+            else:
+                print("[DEBUG] No frames to save (debug off or empty)")
+
         except Exception as e:
-            print(f"AudioHelper: Capture loop error: {e}")
+            print(f"[DEBUG] _capture_loop CRASHED: {type(e).__name__}: {e}")
         finally:
-            if self.debug:
-                print("AudioHelper: Capture loop ended")
+            print("[DEBUG] _capture_loop finally block reached")
 
     def _save_debug_wav(self, frames):
         """Save last utterance to temp file for debugging"""
