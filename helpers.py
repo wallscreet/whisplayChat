@@ -93,25 +93,27 @@ class ScreenHelper:
         img = Image.new('RGB', (self.width, self.height), bg_color)
         draw = ImageDraw.Draw(img)
 
-        # Prioritize Noto Color Emoji for emoji, fallback to others for regular text
-        emoji_font = None
-        base_font_large = None
-        base_font_small = None
-
-        emoji_path = "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"
-        if os.path.exists(emoji_path):
-            try:
-                emoji_font = ImageFont.truetype(emoji_path, 28)  # size for main text
-            except Exception as e:
-                print(f"Failed to load NotoColorEmoji: {e}")
-
-        # Regular font fallback (DejaVu or FreeSans)
         font_paths = [
             "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
             "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
             "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
         ]
+        
+        emoji_path = "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"
+        emoji_font = None
+        base_font_large = None
+        base_font_small = None
+
+        if os.path.exists(emoji_path):
+            try:
+                emoji_font = ImageFont.truetype(emoji_path, 109)  
+                if self.debug:
+                    print("NotoColorEmoji loaded successfully at native size 109")
+            except Exception as e:
+                print(f"Failed to load NotoColorEmoji: {e}")
+
+        # Regular font fallback (DejaVu or FreeSans)
         for path in font_paths:
             if os.path.exists(path):
                 try:
