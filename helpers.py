@@ -18,6 +18,8 @@ class ScreenHelper:
         self.height = self.board.LCD_HEIGHT
         self.debug = debug
         self._cache = {}
+        
+        self._preload_common_screens()
 
     def _load_jpg_as_rgb565(self, filepath: str):
         if not os.path.isfile(filepath):
