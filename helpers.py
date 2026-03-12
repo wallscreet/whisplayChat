@@ -51,108 +51,41 @@ class ScreenHelper:
                 pixel_data.extend([(rgb565 >> 8) & 0xFF, rgb565 & 0xFF])
         return pixel_data
 
-    # def _make_text_image(self, text: str, sub_text: str = "", bg_color=(0,0,0), text_color=(255,255,255)):
-    #     img = Image.new('RGB', (self.width, self.height), bg_color)
-    #     draw = ImageDraw.Draw(img)
-
-    #     font_large = font_small = ImageFont.load_default()
-    #     font_paths = [
-    #         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-    #         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-    #         "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
-    #         "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
-    #     ]
-    #     for path in font_paths:
-    #         if os.path.exists(path):
-    #             try:
-    #                 font_large = ImageFont.truetype(path, 28)
-    #                 font_small = ImageFont.truetype(path, 18)
-    #                 break
-    #             except:
-    #                 pass
-
-    #     # Main text
-    #     bbox = draw.textbbox((0, 0), text, font=font_large)
-    #     tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    #     draw.text(((self.width - tw) // 2, (self.height - th) // 2 - 15), text, fill=text_color, font=font_large)
-
-    #     # Sub text
-    #     if sub_text:
-    #         bbox2 = draw.textbbox((0, 0), sub_text, font=font_small)
-    #         tw2 = bbox2[2] - bbox2[0]
-    #         draw.text(((self.width - tw2) // 2, (self.height - th) // 2 + 30), sub_text, fill=text_color, font=font_small)
-
-    #     pixel_data = []
-    #     for y in range(self.height):
-    #         for x in range(self.width):
-    #             r, g, b = img.getpixel((x, y))
-    #             rgb565 = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
-    #             pixel_data.extend([(rgb565 >> 8) & 0xFF, rgb565 & 0xFF])
-    #     return pixel_data
     def _make_text_image(self, text: str, sub_text: str = "", bg_color=(0,0,0), text_color=(255,255,255)):
         img = Image.new('RGB', (self.width, self.height), bg_color)
         draw = ImageDraw.Draw(img)
 
+        font_large = font_small = ImageFont.load_default()
         font_paths = [
             "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
             "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
             "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
         ]
-        
-        emoji_path = "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"
-        emoji_font = None
-        base_font_large = None
-        base_font_small = None
-
-        if os.path.exists(emoji_path):
-            try:
-                emoji_font = ImageFont.truetype(emoji_path, 109)  
-                if self.debug:
-                    print("NotoColorEmoji loaded successfully at native size 109")
-            except Exception as e:
-                print(f"Failed to load NotoColorEmoji: {e}")
-
-        # Regular font fallback (DejaVu or FreeSans)
         for path in font_paths:
             if os.path.exists(path):
                 try:
-                    base_font_large = ImageFont.truetype(path, 28)
-                    base_font_small = ImageFont.truetype(path, 18)
+                    font_large = ImageFont.truetype(path, 28)
+                    font_small = ImageFont.truetype(path, 18)
                     break
                 except:
                     pass
 
-        if base_font_large is None:
-            base_font_large = ImageFont.load_default()
-        if base_font_small is None:
-            base_font_small = ImageFont.load_default()
-
-        # Draw main text (use emoji font if available for emoji-heavy text)
-        font_large = emoji_font or base_font_large
+        # Main text
         bbox = draw.textbbox((0, 0), text, font=font_large)
         tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-        x = (self.width - tw) // 2
-        y = (self.height - th) // 2 - 15
+        draw.text(((self.width - tw) // 2, (self.height - th) // 2 - 15), text, fill=text_color, font=font_large)
 
-        # For color emoji, use embedded_color=True if using NotoColorEmoji
-        if emoji_font:
-            draw.text((x, y), text, fill=text_color, font=font_large, embedded_color=True)
-        else:
-            draw.text((x, y), text, fill=text_color, font=font_large)
-
-        # Sub text (regular font only — emoji in sub_text unlikely)
+        # Sub text
         if sub_text:
-            bbox2 = draw.textbbox((0, 0), sub_text, font=base_font_small)
+            bbox2 = draw.textbbox((0, 0), sub_text, font=font_small)
             tw2 = bbox2[2] - bbox2[0]
-            x2 = (self.width - tw2) // 2
-            draw.text((x2, y + th + 15), sub_text, fill=text_color, font=base_font_small)
+            draw.text(((self.width - tw2) // 2, (self.height - th) // 2 + 30), sub_text, fill=text_color, font=font_small)
 
-        # Convert to RGB565 (unchanged)
         pixel_data = []
-        for py in range(self.height):
-            for px in range(self.width):
-                r, g, b = img.getpixel((px, py))
+        for y in range(self.height):
+            for x in range(self.width):
+                r, g, b = img.getpixel((x, y))
                 rgb565 = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
                 pixel_data.extend([(rgb565 >> 8) & 0xFF, rgb565 & 0xFF])
         return pixel_data
