@@ -1,12 +1,15 @@
-import os
+# import os
 import argparse
-from Driver.WhisPlay import WhisPlayBoard
-from utils import load_jpg_as_rgb565
+# from Driver.WhisPlay import WhisPlayBoard
+# from utils import load_jpg_as_rgb565
 from time import sleep
+from helpers import ScreenHelper
 
 
-board = WhisPlayBoard()
-board.set_backlight(50)
+# board = WhisPlayBoard()
+# board.set_backlight(50)
+
+screen_helper = ScreenHelper()
 
 global_image_data = None
 image_filepath = None
@@ -23,12 +26,13 @@ def on_button_pressed():
     
 
 try:
-    global_image_data = load_jpg_as_rgb565(
-        image_filepath, board.LCD_WIDTH, board.LCD_HEIGHT)
+    # global_image_data = load_jpg_as_rgb565(
+    #     image_filepath, board.LCD_WIDTH, board.LCD_HEIGHT)
     
-    board.draw_image(0, 0, board.LCD_WIDTH, board.LCD_HEIGHT, global_image_data)
+    # board.draw_image(0, 0, board.LCD_WIDTH, board.LCD_HEIGHT, global_image_data)
     
-    print(f"Image {os.path.basename(image_filepath)} loaded and displayed.")
+    # print(f"Image {os.path.basename(image_filepath)} loaded and displayed.")
+    screen_helper.show_image(filepath=image_filepath)
 except Exception as e:
     print(f"Failed to load image from {image_filepath}: {e}")
 
@@ -41,4 +45,4 @@ except KeyboardInterrupt:
     print("Exiting test...")
 
 finally:
-    board.cleanup()
+    screen_helper.board.cleanup()
