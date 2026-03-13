@@ -43,13 +43,7 @@ class VoiceAgent:
         """Called when button is released"""
         self.screen.show_processing()
         self.audio.stop_input_stream()
-        ###
-        while not self.audio.audio_queue.empty():
-            try:
-                self.audio.audio_queue.get_nowait()
-            except queue.Empty:
-                break
-        ###
+        
         if self.debug:
             print("Button RELEASE → input stopped, waiting for response")
 
