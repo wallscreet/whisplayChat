@@ -8,6 +8,53 @@ import pyaudio
 
 load_dotenv()
 
+# class GrokTTSClient:
+#     def __init__(self):
+#         self.client = AsyncOpenAI(
+#             api_key=os.getenv("XAI_API_KEY"),
+#             base_url="https://api.x.ai/v1",
+#         )
+#         self.voice = PiperVoice.load(Path("models/en_US-lessac-medium.onnx"))
+
+#         self.p = pyaudio.PyAudio()
+#         self.stream = self.p.open(
+#             format=pyaudio.paInt16,
+#             channels=1,
+#             rate=self.voice.config.sample_rate,
+#             output=True,
+#             output_device_index=1
+#         )
+
+#     async def stream_response_to_speech(self, messages, model="grok-4-1-fast-non-reasoning"):
+#         stream = await self.client.chat.completions.create(
+#             model=model,
+#             messages=messages,
+#             stream=True,
+#             temperature=0.7,
+#         )
+
+#         # async for chunk in stream:
+#         #     delta = chunk.choices[0].delta.content or ""
+#         #     if delta:
+#         #         for audio_chunk in self.voice.synthesize(delta):
+#         #             self.stream.write(audio_chunk.audio_int16_bytes)
+#         self.buffer = ""
+#         for chunk in stream:
+#             delta = chunk.choices[0].delta.content or ""
+#             self.buffer += delta
+#             while '.' in self.buffer or '!' in self.buffer or '?' in self.buffer:
+#                 # Split at first sentence end
+#                 end_idx = min(
+#                     self.buffer.find('.') if '.' in self.buffer else len(self.buffer),
+#                     self.buffer.find('!') if '!' in self.buffer else len(self.buffer),
+#                     self.buffer.find('?') if '?' in self.buffer else len(self.buffer)
+#                 ) + 1
+#                 sentence = self.buffer[:end_idx].strip()
+#                 self.buffer = self.buffer[end_idx:].lstrip()
+#                 if sentence:
+#                     for audio_chunk in self.voice.synthesize(sentence):
+#                         self.stream.write(audio_chunk.audio_int16_bytes)
+
 class GrokTTSClient:
     def __init__(self):
         self.client = AsyncOpenAI(
@@ -24,6 +71,7 @@ class GrokTTSClient:
             output=True,
             output_device_index=1
         )
+        self.buffer = ""  # ← moved here
 
     async def stream_response_to_speech(self, messages, model="grok-4-1-fast-non-reasoning"):
         stream = await self.client.chat.completions.create(
@@ -33,11 +81,20 @@ class GrokTTSClient:
             temperature=0.7,
         )
 
-        async for chunk in stream:
+        async for chunk in stream:  # ← async for
             delta = chunk.choices[0].delta.content or ""
-            if delta:
-                for audio_chunk in self.voice.synthesize(delta):
-                    self.stream.write(audio_chunk.audio_int16_bytes)
+            self.buffer += delta
+            while '.' in self.buffer or '!' in self.buffer or '?' in self.buffer:
+                end_idx = min(
+                    self.buffer.find('.') if '.' in self.buffer else len(self.buffer),
+                    self.buffer.find('!') if '!' in self.buffer else len(self.buffer),
+                    self.buffer.find('?') if '?' in self.buffer else len(self.buffer)
+                ) + 1
+                sentence = self.buffer[:end_idx].strip()
+                self.buffer = self.buffer[end_idx:].lstrip()
+                if sentence:
+                    for audio_chunk in self.voice.synthesize(sentence):
+                        self.stream.write(audio_chunk.audio_int16_bytes)
 
     def cleanup(self):
         self.stream.stop_stream()
