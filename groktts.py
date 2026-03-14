@@ -3,6 +3,9 @@ from openai import AsyncOpenAI
 from piper import PiperVoice
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class GrokTTSClient:
     def __init__(self):
