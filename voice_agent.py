@@ -25,12 +25,12 @@ class VoiceAgent:
         if not self.api_key:
             raise ValueError("XAI_API_KEY not found in .env — check your file!")
 
-        # Wire button callbacks
+        # Wire up button callbacks  
         self.screen.board.on_button_press(self.on_button_press)
         self.screen.board.on_button_release(self.on_button_release)
 
         self.ws = None
-        self.screen.show_idle()  # start on ready screen
+        self.screen.show_idle()
 
     def on_button_press(self):
         """Called when button is pressed"""
@@ -60,7 +60,7 @@ class VoiceAgent:
                         "You are Grok running on a portable Whisplay HAT. "
                         "Be witty, concise, and helpful. Keep spoken responses natural."
                     ),
-                    "voice": "eve",  # change to ara, leo, rex if you prefer
+                    "voice": "eve",  # also available: ara, leo, rex
                     "turn_detection": {"type": "server_vad"},
                 }
             }))
@@ -81,7 +81,7 @@ class VoiceAgent:
                         if b64:
                             audio_bytes = base64.b64decode(b64)
                             self.audio.play_audio_chunk(audio_bytes)
-                            self.screen.show_text("Grok:", "speaking...")  # optional
+                            self.screen.show_text("Grok:", "speaking...")
 
                     elif data.get("type") == "response.output_audio_transcript.delta":
                         # You can accumulate and show streaming text here later

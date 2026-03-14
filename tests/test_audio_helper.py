@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import time
-from helpers import AudioHelper
+from ..helpers import AudioHelper
 
 def main():
     audio = AudioHelper(debug=True)

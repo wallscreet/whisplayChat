@@ -1,6 +1,6 @@
 import argparse
 from time import sleep
-from helpers import ScreenHelper
+from ..helpers import ScreenHelper
 
 
 screen_helper = ScreenHelper()

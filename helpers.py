@@ -6,7 +6,7 @@ import threading
 import time
 from typing import Optional
 import wave
-
+import sys
 from PIL import Image, ImageDraw, ImageFont
 import os
 from Driver.WhisPlay import WhisPlayBoard
@@ -344,24 +344,40 @@ class AudioHelper:
             self.output_stream.write(audio_bytes)
         except Exception as e:
             print(f"AudioHelper: Playback error: {e}")
-    ### new start
-    # def play_audio_chunk(self, audio_bytes: bytes):
-    #     self.output_queue.put_nowait(audio_bytes)
-    #     if not self.playing:
-    #         threading.Thread(target=self._play_buffered, daemon=True).start()
+    
+    def set_wm8960_volume_stable(self, volume_level: str):
+        """
+        Sets the 'Speaker' volume for the wm8960 sound card using the amixer command.
 
-    # def _play_buffered(self):
-    #     self.playing = True
-    #     while not self.output_queue.empty() or self._listening:  # keep alive during response
-    #         try:
-    #             chunk = self.output_queue.get(timeout=0.1)
-    #             if not self.output_stream:
-    #                 self.output_stream = self.p.open(...)  # as before
-    #             self.output_stream.write(chunk)
-    #         except queue.Empty:
-    #             time.sleep(0.02)
-    #     self.playing = False
-    ### new end
+        Args:
+            volume_level (str): The desired volume value, e.g., '90%' or '121'.
+        """
+
+        CARD_NAME = 'wm8960soundcard'
+        CONTROL_NAME = 'Speaker'
+        DEVICE_ARG = f'hw:{CARD_NAME}'
+
+        command = [
+            'amixer',
+            '-D', DEVICE_ARG,
+            'sset',
+            CONTROL_NAME,
+            volume_level
+        ]
+
+        try:
+            subprocess.run(command, check=True, capture_output=True, text=True)
+
+            print(
+                f"INFO: Successfully set '{CONTROL_NAME}' volume to {volume_level} on card '{CARD_NAME}'.")
+
+        except subprocess.CalledProcessError as e:
+            print(f"ERROR: Failed to execute amixer.", file=sys.stderr)
+            print(f"Command: {' '.join(command)}", file=sys.stderr)
+            print(f"Return Code: {e.returncode}", file=sys.stderr)
+            print(f"Error Output:\n{e.stderr}", file=sys.stderr)
+        except FileNotFoundError:
+            print("ERROR: 'amixer' command not found. Ensure it is installed and in PATH.", file=sys.stderr)
 
     def cleanup(self):
         """Call on shutdown"""
