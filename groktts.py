@@ -36,8 +36,8 @@ class GrokTTSClient:
         async for chunk in stream:
             delta = chunk.choices[0].delta.content or ""
             if delta:
-                for audio_bytes in self.voice.synthesize(delta):
-                    self.stream.write(audio_bytes)
+                for audio_chunk in self.voice.synthesize(delta):
+                    self.stream.write(audio_chunk.audio_int16_bytes)
 
     def cleanup(self):
         self.stream.stop_stream()
