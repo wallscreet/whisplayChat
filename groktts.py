@@ -15,7 +15,7 @@ class GrokTTSClient:
             api_key=os.getenv("XAI_API_KEY"),
             base_url="https://api.x.ai/v1",
         )
-        self.voice = PiperVoice.load(Path("models/en_US-lessac-medium.onnx"))
+        self.voice = PiperVoice.load(Path("models/en_US-lessac-low.onnx"))
 
         self.p = pyaudio.PyAudio()
         self.stream = self.p.open(
