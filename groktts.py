@@ -21,7 +21,8 @@ class GrokTTSClient:
             format=pyaudio.paInt16,
             channels=1,
             rate=self.voice.config.sample_rate,
-            output=True
+            output=True,
+            output_device_index=1
         )
 
     async def stream_response_to_speech(self, messages, model="grok-4-1-fast-non-reasoning"):
