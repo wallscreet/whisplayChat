@@ -13,7 +13,7 @@ class GrokTTSClient:
             api_key=os.getenv("XAI_API_KEY"),
             base_url="https://api.x.ai/v1",
         )
-        self.voice = PiperVoice.load(Path("en_US-lessac-medium.onnx"))  # adjust model path
+        self.voice = PiperVoice.load(Path("models/en_US-lessac-medium.onnx"))  # adjust model path
 
     async def stream_response_to_speech(self, messages, model="grok-4-1-fast-non-reasoning"):
         stream = await self.client.chat.completions.create(
@@ -27,7 +27,7 @@ class GrokTTSClient:
             delta = chunk.choices[0].delta.content or ""
             if delta:
                 # Stream text to Piper (synthesizes & plays immediately)
-                self.voice.synthesize_stream(delta)
+                self.voice.synthesize(delta)
 
 # Usage example
 async def main():
