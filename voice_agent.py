@@ -175,23 +175,46 @@ class VoiceAgent:
         self.audio.start_input_stream()
         if self.debug: print("PRESS → listening")
 
+    # def on_button_release(self):
+    #     self.screen.show_processing()
+    #     self.audio.stop_input_stream()
+    #     # Clear old chunks
+    #     while not self.audio.audio_queue.empty():
+    #         try:
+    #             self.audio.audio_queue.get_nowait()
+    #         except queue.Empty:
+    #             break
+
+    #     if self.ws and self.ws.open:
+    #         asyncio.run_coroutine_threadsafe(
+    #             self.ws.send(json.dumps({"type": "input_audio_buffer.commit"})),
+    #             asyncio.get_running_loop()
+    #         )
+
+    #     if self.debug: print("RELEASE → committed")
     def on_button_release(self):
         self.screen.show_processing()
         self.audio.stop_input_stream()
-        # Clear old chunks
+        
+        # Clear queue
         while not self.audio.audio_queue.empty():
             try:
                 self.audio.audio_queue.get_nowait()
             except queue.Empty:
                 break
 
-        if self.ws and self.ws.open:
-            asyncio.run_coroutine_threadsafe(
-                self.ws.send(json.dumps({"type": "input_audio_buffer.commit"})),
-                asyncio.get_running_loop()
-            )
+        if self.ws is not None:
+            try:
+                asyncio.run_coroutine_threadsafe(
+                    self.ws.send(json.dumps({"type": "input_audio_buffer.commit"})),
+                    asyncio.get_running_loop()
+                )
+            except Exception as e:
+                if self.debug:
+                    print(f"Commit failed (normal if ws closed): {e}")
 
-        if self.debug: print("RELEASE → committed")
+        if self.debug:
+            print("RELEASE → committed")
 
     async def connect_and_run(self):
         url = "wss://api.x.ai/v1/realtime"
