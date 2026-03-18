@@ -170,7 +170,7 @@ class VoiceAgent:
     def on_button_press(self):
         self.screen.show_listening()
         self.audio.start_input_stream()
-        self.last_activity = asyncio.get_running_loop().time()
+        # Update activity in main loop later
         if self.debug: print("PRESS → listening")
 
     def on_button_release(self):
@@ -182,19 +182,9 @@ class VoiceAgent:
                 self.audio.audio_queue.get_nowait()
             except queue.Empty:
                 break
-        
-        self.last_activity = asyncio.get_running_loop().time()
 
-        if self.ws:
-            try:
-                asyncio.run_coroutine_threadsafe(
-                    self.ws.send(json.dumps({"type": "input_audio_buffer.commit"})),
-                    asyncio.get_running_loop()
-                )
-            except Exception as e:
-                if self.debug: print(f"Commit failed: {e}")
-
-        if self.debug: print("RELEASE → committed")
+        # Commit moved to async loop
+        if self.debug: print("RELEASE → queued commit")
 
     async def connect_and_run(self):
         url = "wss://api.x.ai/v1/realtime"
@@ -215,7 +205,6 @@ class VoiceAgent:
                     if self.debug: print("Connected")
 
                     sender_task = asyncio.create_task(self._audio_sender())
-
                     self.last_activity = asyncio.get_running_loop().time()
 
                     try:
@@ -236,12 +225,14 @@ class VoiceAgent:
                                     self.audio.play_audio_chunk(audio_bytes)
 
                             elif data.get("type") == "response.output_audio_transcript.delta":
-                                if self.debug: print(f"Text: {data.get('delta', '')}")
+                                if self.debug:
+                                    print(f"Text: {data.get('delta', '')}")
 
                             elif data.get("type") in ["response.done", "response.audio.done"]:
                                 self.screen.show_idle()
                                 if self.debug: print("Done")
 
+                            # Update activity
                             self.last_activity = asyncio.get_running_loop().time()
 
                     except websockets.ConnectionClosed:
@@ -253,8 +244,7 @@ class VoiceAgent:
                 print(f"Connection error: {e}")
                 await asyncio.sleep(2)
 
-            # Wait for next button press to reconnect
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.1)  # wait for next press
 
     async def _audio_sender(self):
         while True:
@@ -278,7 +268,8 @@ class VoiceAgent:
                 break
 
     def run(self):
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         try:
             loop.run_until_complete(self.connect_and_run())
         except KeyboardInterrupt:
@@ -289,6 +280,8 @@ class VoiceAgent:
             self.audio.cleanup()
             self.screen.board.set_rgb(0, 0, 0)
             self.screen.board.set_backlight(0)
+            loop.close()
+
 
 if __name__ == "__main__":
     agent = VoiceAgent(debug=True)
