@@ -123,8 +123,6 @@ class VoiceAgent:
         try:
             asyncio.run(self.connect_and_run())
         except KeyboardInterrupt:
-            if self.ws:
-                asyncio.run(self.ws.close())
             print("Shutdown")
         finally:
             self.audio.cleanup()
