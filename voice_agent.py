@@ -164,27 +164,28 @@ class VoiceAgent:
         self.ws = None
         self.last_activity = 0.0
         self.INACTIVITY_TIMEOUT = 20.0
+        self.commit_needed = asyncio.Event()  # ← new
 
         self.screen.show_idle()
 
     def on_button_press(self):
         self.screen.show_listening()
         self.audio.start_input_stream()
-        # Update activity in main loop later
         if self.debug: print("PRESS → listening")
 
     def on_button_release(self):
         self.screen.show_processing()
         self.audio.stop_input_stream()
         
+        # Clear queue
         while not self.audio.audio_queue.empty():
             try:
                 self.audio.audio_queue.get_nowait()
             except queue.Empty:
                 break
 
-        # Commit moved to async loop
-        if self.debug: print("RELEASE → queued commit")
+        self.commit_needed.set()  # ← signal async to commit
+        if self.debug: print("RELEASE → commit requested")
 
     async def connect_and_run(self):
         url = "wss://api.x.ai/v1/realtime"
@@ -205,6 +206,7 @@ class VoiceAgent:
                     if self.debug: print("Connected")
 
                     sender_task = asyncio.create_task(self._audio_sender())
+
                     self.last_activity = asyncio.get_running_loop().time()
 
                     try:
@@ -214,6 +216,12 @@ class VoiceAgent:
                                 if self.debug: print("Timeout → closing WS")
                                 await self.ws.close()
                                 break
+
+                            # Check if commit requested
+                            if self.commit_needed.is_set():
+                                await self.ws.send(json.dumps({"type": "input_audio_buffer.commit"}))
+                                self.commit_needed.clear()
+                                if self.debug: print("Commit sent from async")
 
                             message = await self.ws.recv()
                             data = json.loads(message)
@@ -225,14 +233,12 @@ class VoiceAgent:
                                     self.audio.play_audio_chunk(audio_bytes)
 
                             elif data.get("type") == "response.output_audio_transcript.delta":
-                                if self.debug:
-                                    print(f"Text: {data.get('delta', '')}")
+                                if self.debug: print(f"Text: {data.get('delta', '')}")
 
                             elif data.get("type") in ["response.done", "response.audio.done"]:
                                 self.screen.show_idle()
                                 if self.debug: print("Done")
 
-                            # Update activity
                             self.last_activity = asyncio.get_running_loop().time()
 
                     except websockets.ConnectionClosed:
@@ -244,7 +250,7 @@ class VoiceAgent:
                 print(f"Connection error: {e}")
                 await asyncio.sleep(2)
 
-            await asyncio.sleep(0.1)  # wait for next press
+            await asyncio.sleep(0.1)
 
     async def _audio_sender(self):
         while True:
@@ -281,7 +287,6 @@ class VoiceAgent:
             self.screen.board.set_rgb(0, 0, 0)
             self.screen.board.set_backlight(0)
             loop.close()
-
 
 if __name__ == "__main__":
     agent = VoiceAgent(debug=True)
