@@ -28,9 +28,6 @@ class VoiceAgent:
         # Wire up button callbacks  
         self.screen.board.on_button_press(self.on_button_press)
         self.screen.board.on_button_release(self.on_button_release)
-        
-        self.last_activity = asyncio.get_event_loop().time()
-        self.INACTIVITY_TIMEOUT = 20.0 # in seconds
 
         self.ws = None
         self.screen.show_idle()
@@ -46,7 +43,6 @@ class VoiceAgent:
         """Called when button is released"""
         self.screen.show_processing()
         self.audio.stop_input_stream()
-        self.last_activity = asyncio.get_event_loop().time()
         
         if self.debug:
             print("Button RELEASE → input stopped, waiting for response")
@@ -77,12 +73,6 @@ class VoiceAgent:
 
             try:
                 while True:
-                    now = asyncio.get_event_loop().time()
-                    if now - self.last_activity > self.INACTIVITY_TIMEOUT:
-                        if self.debug: print("Inactivity timeout -> closing WS")
-                        await self.ws.close()
-                        break
-                    
                     message = await self.ws.recv()
                     data = json.loads(message)
 
@@ -102,8 +92,6 @@ class VoiceAgent:
                         self.screen.show_idle()
                         if self.debug:
                             print("Response complete → back to idle")
-                    
-                    self.last_activity = asyncio.get_event_loop().time()
 
             except Exception as e:
                 print(f"WebSocket error: {e}")
@@ -145,6 +133,8 @@ class VoiceAgent:
                 asyncio.run(self.ws.close())
             print("\n👋 Shutting down...")
         finally:
+            if self.ws:
+                asyncio.run(self.ws.close())
             self.audio.cleanup()
             self.screen.board.set_rgb(0, 0, 0)
             self.screen.board.set_backlight(0)
