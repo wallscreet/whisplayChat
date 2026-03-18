@@ -148,10 +148,6 @@ load_dotenv()
 #             self.screen.board.set_rgb(0, 0, 0)
 #             self.screen.board.set_backlight(0)
 
-
-# if __name__ == "__main__":
-#     agent = VoiceAgent(debug=True)
-#     agent.run()
 class VoiceAgent:
     def __init__(self, debug: bool = True):
         self.debug = debug
@@ -293,3 +289,7 @@ class VoiceAgent:
             self.audio.cleanup()
             self.screen.board.set_rgb(0, 0, 0)
             self.screen.board.set_backlight(0)
+
+if __name__ == "__main__":
+    agent = VoiceAgent(debug=True)
+    agent.run()
