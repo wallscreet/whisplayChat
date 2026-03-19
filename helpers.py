@@ -378,6 +378,13 @@ class AudioHelper:
             print(f"Error Output:\n{e.stderr}", file=sys.stderr)
         except FileNotFoundError:
             print("ERROR: 'amixer' command not found. Ensure it is installed and in PATH.", file=sys.stderr)
+    
+    def get_last_recording_bytes(self):
+        if not hasattr(self, 'temp_file') or not os.path.exists(self.temp_file):
+            print("No recording available")
+            return b""
+        with open(self.temp_file, "rb") as f:
+            return f.read()
 
     def cleanup(self):
         """Call on shutdown"""

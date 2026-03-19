@@ -12,5 +12,6 @@ dependencies = [
     "pydantic>=2.12.5",
     "pygame>=2.6.1",
     "python-dotenv>=1.2.2",
+    "requests>=2.32.5",
     "websockets>=16.0",
 ]
