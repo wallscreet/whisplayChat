@@ -97,6 +97,9 @@ class VoiceAgent:
 
             wav_bytes = r.content
 
+            print("Bytes received:", len(wav_bytes))
+            print("First 16 bytes:", wav_bytes[:16])
+            
             # Decode WAV
             wf = wave.open(io.BytesIO(wav_bytes), 'rb')
 
