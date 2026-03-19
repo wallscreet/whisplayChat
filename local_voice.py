@@ -1,4 +1,6 @@
+import io
 import queue
+import wave
 from clients import XAIClient
 import requests
 import time
@@ -76,12 +78,45 @@ class VoiceAgent:
             return
 
         # 3. TTS
+        # try:
+        #     r = requests.post(f"{SERVER_URL}/tts", json={"text": response}, timeout=30, stream=True)
+        #     r.raise_for_status()
+        #     for chunk in r.iter_content(chunk_size=4096):
+        #         if chunk:
+        #             self.audio.play_audio_chunk(chunk)
+        # except Exception as e:
+        #     print(f"TTS error: {e}")
         try:
-            r = requests.post(f"{SERVER_URL}/tts", json={"text": response}, timeout=30, stream=True)
+            r = requests.post(
+                f"{SERVER_URL}/tts",
+                json={"text": response},
+                timeout=30
+            )
             r.raise_for_status()
-            for chunk in r.iter_content(chunk_size=4096):
-                if chunk:
-                    self.audio.play_audio_chunk(chunk)
+
+            wav_bytes = r.content
+
+            # Decode WAV
+            wf = wave.open(io.BytesIO(wav_bytes), 'rb')
+
+            if self.debug:
+                print("TTS format:",
+                    wf.getnchannels(),
+                    wf.getframerate(),
+                    wf.getsampwidth())
+
+            # Ensure format matches output stream
+            assert wf.getnchannels() == 1
+            assert wf.getframerate() == 24000
+            assert wf.getsampwidth() == 2  # 16-bit
+
+            # Stream decoded PCM
+            while True:
+                frames = wf.readframes(self.audio.chunk_size)
+                if not frames:
+                    break
+                self.audio.play_audio_chunk(frames)
+
         except Exception as e:
             print(f"TTS error: {e}")
 
