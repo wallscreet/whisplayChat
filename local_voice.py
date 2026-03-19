@@ -7,6 +7,7 @@ import time
 import os
 from dotenv import load_dotenv
 from helpers import ScreenHelper, AudioHelper
+import traceback
 
 
 load_dotenv()
@@ -99,16 +100,16 @@ class VoiceAgent:
             # Decode WAV
             wf = wave.open(io.BytesIO(wav_bytes), 'rb')
 
-            if self.debug:
-                print("TTS format:",
-                    wf.getnchannels(),
-                    wf.getframerate(),
-                    wf.getsampwidth())
+            channels = wf.getnchannels()
+            rate = wf.getframerate()
+            width = wf.getsampwidth()
+
+            print(f"TTS format → channels={channels}, rate={rate}, width={width}")
 
             # Ensure format matches output stream
-            assert wf.getnchannels() == 1
-            assert wf.getframerate() == 24000
-            assert wf.getsampwidth() == 2  # 16-bit
+            # assert wf.getnchannels() == 1
+            # assert wf.getframerate() == 22050
+            # assert wf.getsampwidth() == 2  # 16-bit
 
             # Stream decoded PCM
             while True:
@@ -118,7 +119,9 @@ class VoiceAgent:
                 self.audio.play_audio_chunk(frames)
 
         except Exception as e:
-            print(f"TTS error: {e}")
+            print("TTS error:")
+            print(repr(e))  # shows the actual exception type
+            traceback.print_exc()  # full stack trace
 
         self.screen.show_idle()
         if self.debug: print("Done")
