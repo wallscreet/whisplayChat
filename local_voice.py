@@ -80,13 +80,38 @@ class VoiceAgent:
 
         # 3. TTS
         # try:
-        #     r = requests.post(f"{SERVER_URL}/tts", json={"text": response}, timeout=30, stream=True)
+        #     r = requests.post(
+        #         f"{SERVER_URL}/tts",
+        #         json={"text": response},
+        #         timeout=30
+        #     )
         #     r.raise_for_status()
-        #     for chunk in r.iter_content(chunk_size=4096):
-        #         if chunk:
-        #             self.audio.play_audio_chunk(chunk)
+
+        #     wav_bytes = r.content
+
+        #     print("Bytes received:", len(wav_bytes))
+        #     print("First 16 bytes:", wav_bytes[:16])
+            
+        #     # Decode WAV
+        #     wf = wave.open(io.BytesIO(wav_bytes), 'rb')
+
+        #     channels = wf.getnchannels()
+        #     rate = wf.getframerate()
+        #     width = wf.getsampwidth()
+
+        #     print(f"TTS format → channels={channels}, rate={rate}, width={width}")
+
+        #     # Stream decoded PCM
+        #     while True:
+        #         frames = wf.readframes(self.audio.chunk_size)
+        #         if not frames:
+        #             break
+        #         self.audio.play_audio_chunk(frames)
+
         # except Exception as e:
-        #     print(f"TTS error: {e}")
+        #     print("TTS error:")
+        #     print(repr(e))
+        #     traceback.print_exc()
         try:
             r = requests.post(
                 f"{SERVER_URL}/tts",
@@ -95,36 +120,13 @@ class VoiceAgent:
             )
             r.raise_for_status()
 
-            wav_bytes = r.content
-
-            print("Bytes received:", len(wav_bytes))
-            print("First 16 bytes:", wav_bytes[:16])
-            
-            # Decode WAV
-            wf = wave.open(io.BytesIO(wav_bytes), 'rb')
-
-            channels = wf.getnchannels()
-            rate = wf.getframerate()
-            width = wf.getsampwidth()
-
-            print(f"TTS format → channels={channels}, rate={rate}, width={width}")
-
-            # Ensure format matches output stream
-            # assert wf.getnchannels() == 1
-            # assert wf.getframerate() == 22050
-            # assert wf.getsampwidth() == 2  # 16-bit
-
-            # Stream decoded PCM
-            while True:
-                frames = wf.readframes(self.audio.chunk_size)
-                if not frames:
-                    break
-                self.audio.play_audio_chunk(frames)
+            print(f"TTS response received: {len(r.content):,} bytes")
+            self.audio.play_wav_bytes(r.content)   # ← this is the only line you need now
 
         except Exception as e:
             print("TTS error:")
-            print(repr(e))  # shows the actual exception type
-            traceback.print_exc()  # full stack trace
+            import traceback
+            traceback.print_exc()
 
         self.screen.show_idle()
         if self.debug: print("Done")

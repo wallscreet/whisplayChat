@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import io
 import queue
 import subprocess
 import threading
@@ -385,6 +386,62 @@ class AudioHelper:
             return b""
         with open(self.temp_file, "rb") as f:
             return f.read()
+    
+    def play_wav_bytes(self, wav_bytes: bytes):
+        """Play a complete WAV file (from Piper TTS etc.) using the EXACT sample rate in the file."""
+        if not wav_bytes:
+            print("[Audio] Received empty audio")
+            return
+
+        try:
+            bio = io.BytesIO(wav_bytes)
+            with wave.open(bio, 'rb') as wf:
+                channels = wf.getnchannels()
+                rate = wf.getframerate()
+                width = wf.getsampwidth()
+
+                print(f"[Audio] Playing {len(wav_bytes):,} bytes → {channels}ch, {rate}Hz, {width*8}-bit")
+
+                # Close any old stream and open a fresh one with the correct parameters
+                if self.output_stream:
+                    try:
+                        self.output_stream.stop_stream()
+                        self.output_stream.close()
+                    except:
+                        pass
+                    self.output_stream = None
+
+                self.output_stream = self.p.open(
+                    format=self.p.get_format_from_width(width),
+                    channels=channels,
+                    rate=rate,
+                    output=True,
+                    frames_per_buffer=1024
+                )
+
+                # Stream the audio
+                chunk_size = 1024
+                data = wf.readframes(chunk_size)
+                while data:
+                    self.output_stream.write(data)
+                    data = wf.readframes(chunk_size)
+
+                # Tiny drain so the last bits don't cut off
+                time.sleep(0.05)
+
+        except Exception as e:
+            print(f"[Audio] Playback failed: {e}")
+            import traceback
+            traceback.print_exc()
+        finally:
+            # Optional: leave the stream open or close it — either works
+            if self.output_stream:
+                try:
+                    self.output_stream.stop_stream()
+                    self.output_stream.close()
+                except:
+                    pass
+                self.output_stream = None
 
     def cleanup(self):
         """Call on shutdown"""
