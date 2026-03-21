@@ -7,7 +7,6 @@ import time
 import os
 from dotenv import load_dotenv
 from helpers import ScreenHelper, AudioHelper
-import traceback
 
 
 load_dotenv()
@@ -41,8 +40,9 @@ class VoiceAgent:
     def on_button_release(self):
         self.screen.show_processing()
         self.audio.stop_input_stream()
+        new_msg = self.messages
         
-        # Clear queue (not needed anymore, but harmless)
+        # Clear queue
         while not self.audio.audio_queue.empty():
             try:
                 self.audio.audio_queue.get_nowait()
@@ -52,7 +52,7 @@ class VoiceAgent:
         if self.debug:
             print("RELEASE → sending request")
 
-        # Get last recording (add this method to AudioHelper)
+        # Get last recording
         wav_bytes = self.audio.get_last_recording_bytes()
 
         # 1. STT
@@ -61,6 +61,7 @@ class VoiceAgent:
             r = requests.post(f"{SERVER_URL}/stt", files=files, timeout=15)
             r.raise_for_status()
             user_text = r.json()["text"]
+            new_msg.append({"role": "user", "content": user_text})
             if self.debug: print(f"You: {user_text}")
         except Exception as e:
             print(f"STT error: {e}")
@@ -70,8 +71,7 @@ class VoiceAgent:
         # 2. LLM
         try:
             model = "grok-4-1-fast-non-reasoning"
-            self.messages.append({"role": "user", "content": user_text})
-            response = self.client.get_response(model=model, messages=self.messages)
+            response = self.client.get_response(model=model, messages=new_msg)
             if self.debug: print(f"Grok: {response}")
         except Exception as e:
             print(f"LLM error: {e}")
@@ -79,39 +79,6 @@ class VoiceAgent:
             return
 
         # 3. TTS
-        # try:
-        #     r = requests.post(
-        #         f"{SERVER_URL}/tts",
-        #         json={"text": response},
-        #         timeout=30
-        #     )
-        #     r.raise_for_status()
-
-        #     wav_bytes = r.content
-
-        #     print("Bytes received:", len(wav_bytes))
-        #     print("First 16 bytes:", wav_bytes[:16])
-            
-        #     # Decode WAV
-        #     wf = wave.open(io.BytesIO(wav_bytes), 'rb')
-
-        #     channels = wf.getnchannels()
-        #     rate = wf.getframerate()
-        #     width = wf.getsampwidth()
-
-        #     print(f"TTS format → channels={channels}, rate={rate}, width={width}")
-
-        #     # Stream decoded PCM
-        #     while True:
-        #         frames = wf.readframes(self.audio.chunk_size)
-        #         if not frames:
-        #             break
-        #         self.audio.play_audio_chunk(frames)
-
-        # except Exception as e:
-        #     print("TTS error:")
-        #     print(repr(e))
-        #     traceback.print_exc()
         try:
             r = requests.post(
                 f"{SERVER_URL}/tts",
@@ -120,19 +87,30 @@ class VoiceAgent:
             )
             r.raise_for_status()
 
-            print(f"TTS response received: {len(r.content):,} bytes")
-            self.audio.play_wav_bytes(r.content)   # ← this is the only line you need now
+            print(f"TTS response status: {r.status_code}, bytes received: {len(r.content):,}")
+
+            if len(r.content) < 100:
+                print("Warning: TTS returned almost no data — check server")
+                self.screen.show_idle()
+                return
+
+            # Show speaking indicator
+            self.screen.show_text("SPEAKING", "Juliet answering…", bg_color=(20,40,20), text_color=(100,255,100))
+
+            # Play it using your existing method
+            self.audio.play_wav_bytes(r.content)
 
         except Exception as e:
-            print("TTS error:")
+            print("TTS playback error:")
             import traceback
             traceback.print_exc()
 
-        self.screen.show_idle()
-        if self.debug: print("Done")
+        finally:
+            self.screen.show_idle()
+            if self.debug: print("Done")
 
     def run(self):
-        print("VoiceAgent running (non-realtime mode)")
+        print("VoiceAgent running...")
         try:
             while True:
                 time.sleep(0.1)
