@@ -40,7 +40,6 @@ class VoiceAgent:
     def on_button_release(self):
         self.screen.show_processing()
         self.audio.stop_input_stream()
-        new_msg = self.messages
         
         # Clear queue
         while not self.audio.audio_queue.empty():
