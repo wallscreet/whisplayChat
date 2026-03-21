@@ -28,7 +28,7 @@ class VoiceAgent:
         self.messages = [
             {
                 "role": "system",
-                "content": "You are a helpful assistant"
+                "content": "You are a helpful assistant running on a mobile device. Please do not include any emojis in your responses."
             }
         ]
 
