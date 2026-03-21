@@ -12,6 +12,8 @@ from PIL import Image, ImageDraw, ImageFont
 import os
 from Driver.WhisPlay import WhisPlayBoard
 import pyaudio
+import numpy as np
+from scipy.signal import resample
 
 
 class ScreenHelper:
@@ -387,80 +389,32 @@ class AudioHelper:
         with open(self.temp_file, "rb") as f:
             return f.read()
     
-    # def play_wav_bytes(self, wav_bytes: bytes):
-    #     """Play a complete WAV file (from Piper TTS etc.) using the EXACT sample rate in the file."""
-    #     if not wav_bytes:
-    #         print("[Audio] Received empty audio")
-    #         return
-
-    #     try:
-    #         bio = io.BytesIO(wav_bytes)
-    #         with wave.open(bio, 'rb') as wf:
-    #             channels = wf.getnchannels()
-    #             rate = wf.getframerate()
-    #             width = wf.getsampwidth()
-
-    #             print(f"[Audio] Playing {len(wav_bytes):,} bytes → {channels}ch, {rate}Hz, {width*8}-bit")
-
-    #             # Close any old stream and open a fresh one with the correct parameters
-    #             if self.output_stream:
-    #                 try:
-    #                     self.output_stream.stop_stream()
-    #                     self.output_stream.close()
-    #                 except:
-    #                     pass
-    #                 self.output_stream = None
-
-    #             self.output_stream = self.p.open(
-    #                 format=self.p.get_format_from_width(width),
-    #                 channels=channels,
-    #                 rate=rate,
-    #                 output=True,
-    #                 frames_per_buffer=1024
-    #             )
-
-    #             # Stream the audio
-    #             chunk_size = 1024
-    #             data = wf.readframes(chunk_size)
-    #             while data:
-    #                 self.output_stream.write(data)
-    #                 data = wf.readframes(chunk_size)
-
-    #             # Tiny drain so the last bits don't cut off
-    #             time.sleep(0.05)
-
-    #     except Exception as e:
-    #         print(f"[Audio] Playback failed: {e}")
-    #         import traceback
-    #         traceback.print_exc()
-    #     finally:
-    #         # Optional: leave the stream open or close it — either works
-    #         if self.output_stream:
-    #             try:
-    #                 self.output_stream.stop_stream()
-    #                 self.output_stream.close()
-    #             except:
-    #                 pass
-    #             self.output_stream = None
     def play_wav_bytes(self, data: bytes):
         wf = wave.open(io.BytesIO(data), 'rb')
 
-        if self.debug:
-            print(f"[AUDIO] WAV format: {wf.getnchannels()}ch, {wf.getframerate()}Hz")
+        src_rate = wf.getframerate()
+        channels = wf.getnchannels()
 
+        frames = wf.readframes(wf.getnframes())
+        audio = np.frombuffer(frames, dtype=np.int16)
+
+        if src_rate != self.sample_rate:
+            if self.debug:
+                print(f"[AUDIO] Resampling {src_rate} → {self.sample_rate}")
+
+            num_samples = int(len(audio) * self.sample_rate / src_rate)
+            audio = resample(audio, num_samples).astype(np.int16)
+
+        # Open stream once
         if not self.output_stream:
             self.output_stream = self.p.open(
                 format=pyaudio.paInt16,
-                channels=wf.getnchannels(),
-                rate=wf.getframerate(),
+                channels=channels,
+                rate=self.sample_rate,
                 output=True
             )
 
-        while True:
-            frames = wf.readframes(self.chunk_size)
-            if not frames:
-                break
-            self.output_stream.write(frames)
+        self.output_stream.write(audio.tobytes())
 
     def cleanup(self):
         """Call on shutdown"""
