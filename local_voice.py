@@ -25,12 +25,12 @@ class VoiceAgent:
 
         self.screen.show_idle()
         
-        self.messages = [
-            {
-                "role": "system",
-                "content": "You are a helpful assistant running on a mobile device. Please do not include any emojis in your responses."
-            }
-        ]
+        # self.messages = [
+        #     {
+        #         "role": "system",
+        #         "content": "You are a helpful assistant running on a mobile device. Please do not include any emojis in your responses."
+        #     }
+        # ]
 
     def on_button_press(self):
         self.screen.show_listening()
@@ -61,7 +61,6 @@ class VoiceAgent:
             r = requests.post(f"{SERVER_URL}/stt", files=files, timeout=15)
             r.raise_for_status()
             user_text = r.json()["text"]
-            new_msg.append({"role": "user", "content": user_text})
             if self.debug: print(f"You: {user_text}")
         except Exception as e:
             print(f"STT error: {e}")
@@ -71,7 +70,19 @@ class VoiceAgent:
         # 2. LLM
         try:
             model = "grok-4-1-fast-non-reasoning"
-            response = self.client.get_response(model=model, messages=new_msg)
+            
+            messages = [
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant named Juliet running on a portable device. Please keep your responses short and concise and do not use any emojis."
+                },
+                {
+                    "role": "user",
+                    "content": user_text
+                }
+            ]
+            
+            response = self.client.get_response(model=model, messages=messages)
             if self.debug: print(f"Grok: {response}")
         except Exception as e:
             print(f"LLM error: {e}")
@@ -96,8 +107,7 @@ class VoiceAgent:
 
             # Show speaking indicator
             self.screen.show_text("SPEAKING", "Juliet answering…", bg_color=(20,40,20), text_color=(100,255,100))
-
-            # Play it using your existing method
+            # Play the audio
             self.audio.play_wav_bytes(r.content)
 
         except Exception as e:
