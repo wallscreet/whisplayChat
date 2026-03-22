@@ -168,7 +168,7 @@ class ScreenHelper:
 
 
 class AudioHelper:
-    def __init__(self, debug: bool = False, sample_rate: int = 24000, channels: int = 1):
+    def __init__(self, debug: bool = False, sample_rate: int = 22050, channels: int = 1):
         """
         Manages audio input/output for the Whisplay HAT + xAI realtime voice.
         
@@ -180,7 +180,7 @@ class AudioHelper:
         self.debug = debug
         self.sample_rate = sample_rate
         self.channels = channels
-        self.chunk_size = 1024  # ~42 ms at 24kHz
+        self.chunk_size = 4096
 
         self.card_index = self._find_card()
         self._setup_mixer()
@@ -195,9 +195,6 @@ class AudioHelper:
         self._capture_thread: Optional[threading.Thread] = None
 
         self.temp_file = "/tmp/audio_helper_test_file.wav"
-        
-        # self.output_queue = queue.Queue(maxsize=20)
-        # self.playing = False
 
     def _find_card(self) -> int:
         """Auto-detect WM8960 card number"""
@@ -326,8 +323,29 @@ class AudioHelper:
         except queue.Empty:
             return None
 
+    # def play_audio_chunk(self, audio_bytes: bytes):
+    #     """Play incoming audio from xAI response.output_audio.delta"""
+    #     if not self.output_stream:
+    #         try:
+    #             self.output_stream = self.p.open(
+    #                 format=pyaudio.paInt16,
+    #                 channels=self.channels,
+    #                 rate=self.sample_rate,
+    #                 output=True,
+    #                 frames_per_buffer=self.chunk_size
+    #             )
+    #             if self.debug:
+    #                 print("AudioHelper: Output stream opened")
+    #         except Exception as e:
+    #             print(f"AudioHelper: Failed to open output stream: {e}")
+    #             return
+
+    #     try:
+    #         self.output_stream.write(audio_bytes)
+    #     except Exception as e:
+    #         print(f"AudioHelper: Playback error: {e}")
+    #-----------------------------------------
     def play_audio_chunk(self, audio_bytes: bytes):
-        """Play incoming audio from xAI response.output_audio.delta"""
         if not self.output_stream:
             try:
                 self.output_stream = self.p.open(
@@ -338,7 +356,7 @@ class AudioHelper:
                     frames_per_buffer=self.chunk_size
                 )
                 if self.debug:
-                    print("AudioHelper: Output stream opened")
+                    print("AudioHelper: Output stream opened (22050 Hz)")
             except Exception as e:
                 print(f"AudioHelper: Failed to open output stream: {e}")
                 return
@@ -347,6 +365,7 @@ class AudioHelper:
             self.output_stream.write(audio_bytes)
         except Exception as e:
             print(f"AudioHelper: Playback error: {e}")
+    #--------------------------------------------
     
     def set_wm8960_volume_stable(self, volume_level: str):
         """

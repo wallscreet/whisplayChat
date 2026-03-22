@@ -54,6 +54,7 @@ class VoiceAgent:
         # Get last recording
         wav_bytes = self.audio.get_last_recording_bytes()
 
+        # =====================================================================================================
         # 1. STT
         try:
             files = {"file": ("input.wav", wav_bytes, "audio/wav")}
@@ -66,6 +67,7 @@ class VoiceAgent:
             self.screen.show_idle()
             return
 
+        # =====================================================================================================
         # 2. LLM
         try:
             model = "grok-4-1-fast-non-reasoning"
@@ -88,32 +90,55 @@ class VoiceAgent:
             self.screen.show_idle()
             return
 
+        # =====================================================================================================
         # 3. TTS
         try:
+            # r = requests.post(
+            #     f"{SERVER_URL}/tts",
+            #     json={"text": response},
+            #     timeout=30
+            # )
+            # r.raise_for_status()
+
+            # print(f"TTS response status: {r.status_code}, bytes received: {len(r.content):,}")
+
+            # if len(r.content) < 100:
+            #     print("Warning: TTS returned almost no data — check server")
+            #     self.screen.show_idle()
+            #     return
+
+            # # Show speaking indicator
+            # self.screen.show_text("SPEAKING", "Juliet answering…", bg_color=(20,40,20), text_color=(100,255,100))
+            # # Play the audio
+            # self.audio.play_wav_bytes(r.content)
+            #--------------------
             r = requests.post(
                 f"{SERVER_URL}/tts",
                 json={"text": response},
+                stream=True,
                 timeout=30
             )
+
             r.raise_for_status()
 
-            print(f"TTS response status: {r.status_code}, bytes received: {len(r.content):,}")
+            self.screen.show_text(
+                "SPEAKING",
+                "Juliet answering…",
+                bg_color=(20,40,20),
+                text_color=(100,255,100)
+            )
 
-            if len(r.content) < 100:
-                print("Warning: TTS returned almost no data — check server")
-                self.screen.show_idle()
-                return
-
-            # Show speaking indicator
-            self.screen.show_text("SPEAKING", "Juliet answering…", bg_color=(20,40,20), text_color=(100,255,100))
-            # Play the audio
-            self.audio.play_wav_bytes(r.content)
-
+            for chunk in r.iter_content(chunk_size=4096):
+                if chunk:
+                    self.audio.play_audio_chunk(chunk)
+            #---------------------
         except Exception as e:
             print("TTS playback error:")
             import traceback
             traceback.print_exc()
-
+            
+        # =====================================================================================================
+        
         finally:
             self.screen.show_idle()
             if self.debug: print("Done")
