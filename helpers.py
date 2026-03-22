@@ -168,7 +168,7 @@ class ScreenHelper:
 
 
 class AudioHelper:
-    def __init__(self, debug: bool = False, sample_rate: int = 22050, channels: int = 1):
+    def __init__(self, debug: bool = False, sample_rate: int = 24000, channels: int = 1):
         """
         Manages audio input/output for the Whisplay HAT + xAI realtime voice.
         
