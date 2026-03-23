@@ -413,35 +413,82 @@ class AudioHelper:
 
         self.output_stream.write(audio.tobytes())
     
+    # def play_piper_stream_chunk(self, pcm_bytes: bytes):
+    #     """
+    #     Play raw 16-bit mono PCM chunks from Piper synthesize().
+    #     Fixed format: 22050 Hz, 1 channel, paInt16.
+    #     """
+    #     if not pcm_bytes:
+    #         return
+
+    #     # Open stream lazily with Piper's known params
+    #     if not self.output_stream:
+    #         try:
+    #             self.output_stream = self.p.open(
+    #                 format=pyaudio.paInt16,
+    #                 channels=1,
+    #                 rate=48000,
+    #                 output=True,
+    #                 output_device_index=1,
+    #                 frames_per_buffer=4096
+    #             )
+    #             if self.debug:
+    #                 print("[Audio] Piper streaming stream opened @ 22050 Hz mono")
+    #         except Exception as e:
+    #             print(f"[Audio] Failed to open Piper output stream: {e}")
+    #             return
+
+    #     try:
+    #         self.output_stream.write(pcm_bytes)
+    #     except Exception as e:
+    #         print(f"[Audio] Piper write error: {e}")
     def play_piper_stream_chunk(self, pcm_bytes: bytes):
         """
-        Play raw 16-bit mono PCM chunks from Piper synthesize().
-        Fixed format: 22050 Hz, 1 channel, paInt16.
+        Play raw 16-bit mono PCM from Piper (22050 Hz) by resampling to 48000 Hz.
         """
         if not pcm_bytes:
             return
 
-        # Open stream lazily with Piper's known params
+        # Convert bytes → numpy int16 array
+        pcm_array = np.frombuffer(pcm_bytes, dtype=np.int16).astype(np.float32)
+
+        if len(pcm_array) == 0:
+            return
+
+        # Resample: from 22050 to 48000
+        orig_sr = 22050
+        target_sr = 48000
+        num_new_samples = int(len(pcm_array) * target_sr / orig_sr)
+
+        # Use scipy resample (Fourier method, good for audio)
+        resampled_float = resample(pcm_array, num_new_samples)
+
+        # Clip to avoid distortion, convert back to int16
+        resampled_float = np.clip(resampled_float, -32768, 32767)
+        resampled_int16 = resampled_float.astype(np.int16)
+
+        resampled_bytes = resampled_int16.tobytes()
+
+        # Open stream at TARGET rate (once)
         if not self.output_stream:
             try:
                 self.output_stream = self.p.open(
                     format=pyaudio.paInt16,
                     channels=1,
-                    rate=48000,
+                    rate=target_sr,          # 48000
                     output=True,
-                    output_device_index=1,
-                    frames_per_buffer=4096
+                    frames_per_buffer=8192,  # Larger buffer helps with resampling variability
                 )
-                if self.debug:
-                    print("[Audio] Piper streaming stream opened @ 22050 Hz mono")
+                print(f"[Audio] Piper stream opened @ {target_sr} Hz (resampled)")
             except Exception as e:
-                print(f"[Audio] Failed to open Piper output stream: {e}")
+                print(f"[Audio] Failed to open stream: {e}")
                 return
 
+        # Write the resampled bytes
         try:
-            self.output_stream.write(pcm_bytes)
+            self.output_stream.write(resampled_bytes)
         except Exception as e:
-            print(f"[Audio] Piper write error: {e}")
+            print(f"[Audio] Write error: {e}")
 
     def cleanup(self):
         """Call on shutdown"""
