@@ -413,34 +413,34 @@ class AudioHelper:
 
         self.output_stream.write(audio.tobytes())
     
-    def play_pcm_stream_chunk(self, pcm_bytes: bytes):
+    def play_piper_stream_chunk(self, pcm_bytes: bytes):
         """
-        Play raw 16-bit mono PCM chunks from Piper TTS streaming.
-        Hardcoded to Piper's format: 22050 Hz, 1ch, paInt16.
+        Play raw 16-bit mono PCM chunks from Piper synthesize().
+        Fixed format: 22050 Hz, 1 channel, paInt16.
         """
         if not pcm_bytes:
             return
 
-        # Lazy open stream with CORRECT Piper params
+        # Open stream lazily with Piper's known params
         if not self.output_stream:
             try:
                 self.output_stream = self.p.open(
                     format=pyaudio.paInt16,
                     channels=1,
-                    rate=22050,               # ← critical fix!
+                    rate=22050,                 # ← matches your model
                     output=True,
-                    frames_per_buffer=4096    # match your chunk size
+                    frames_per_buffer=4096      # Larger for smoother streaming
                 )
                 if self.debug:
-                    print("[Audio] Piper streaming output opened @ 22050 Hz mono")
+                    print("[Audio] Piper streaming stream opened @ 22050 Hz mono")
             except Exception as e:
-                print(f"[Audio] Failed to open Piper stream: {e}")
+                print(f"[Audio] Failed to open Piper output stream: {e}")
                 return
 
         try:
             self.output_stream.write(pcm_bytes)
         except Exception as e:
-            print(f"[Audio] Piper stream write error: {e}")
+            print(f"[Audio] Piper write error: {e}")
 
     def cleanup(self):
         """Call on shutdown"""

@@ -117,7 +117,7 @@ class VoiceAgent:
                 f"{SERVER_URL}/tts",
                 json={"text": response},
                 stream=True,
-                timeout=30
+                timeout=45  # Slightly longer for longer responses
             )
             r.raise_for_status()
 
@@ -128,12 +128,15 @@ class VoiceAgent:
                 text_color=(100,255,100)
             )
 
-            # Stream chunks using the Piper-specific method
-            for chunk in r.iter_content(chunk_size=4096):
-                if chunk:  # filter keep-alive/empty
-                    self.audio.play_pcm_stream_chunk(chunk)
+            chunk_count = 0
+            for chunk in r.iter_content(chunk_size=8192):  # Larger chunks = less overhead
+                if chunk:
+                    chunk_count += 1
+                    self.audio.play_piper_stream_chunk(chunk)
+                    if self.debug and chunk_count % 5 == 0:
+                        print(f"[Audio] Played {chunk_count} Piper chunks")
 
-            # Optional: small drain delay to avoid cutoff
+            # Small drain to avoid cutoff at end
             time.sleep(0.1)
 
         except Exception as e:
