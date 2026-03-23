@@ -427,8 +427,9 @@ class AudioHelper:
                 self.output_stream = self.p.open(
                     format=pyaudio.paInt16,
                     channels=1,
-                    rate=22050,                 # ← matches your model
+                    rate=48000,                 # ← matches your model
                     output=True,
+                    output_device_index=1,
                     frames_per_buffer=4096      # Larger for smoother streaming
                 )
                 if self.debug:
