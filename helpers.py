@@ -323,29 +323,8 @@ class AudioHelper:
         except queue.Empty:
             return None
 
-    # def play_audio_chunk(self, audio_bytes: bytes):
-    #     """Play incoming audio from xAI response.output_audio.delta"""
-    #     if not self.output_stream:
-    #         try:
-    #             self.output_stream = self.p.open(
-    #                 format=pyaudio.paInt16,
-    #                 channels=self.channels,
-    #                 rate=self.sample_rate,
-    #                 output=True,
-    #                 frames_per_buffer=self.chunk_size
-    #             )
-    #             if self.debug:
-    #                 print("AudioHelper: Output stream opened")
-    #         except Exception as e:
-    #             print(f"AudioHelper: Failed to open output stream: {e}")
-    #             return
-
-    #     try:
-    #         self.output_stream.write(audio_bytes)
-    #     except Exception as e:
-    #         print(f"AudioHelper: Playback error: {e}")
-    #-----------------------------------------
     def play_audio_chunk(self, audio_bytes: bytes):
+        """Play incoming audio from xAI response.output_audio.delta"""
         if not self.output_stream:
             try:
                 self.output_stream = self.p.open(
@@ -356,7 +335,7 @@ class AudioHelper:
                     frames_per_buffer=self.chunk_size
                 )
                 if self.debug:
-                    print("AudioHelper: Output stream opened (22050 Hz)")
+                    print("AudioHelper: Output stream opened")
             except Exception as e:
                 print(f"AudioHelper: Failed to open output stream: {e}")
                 return
@@ -365,7 +344,6 @@ class AudioHelper:
             self.output_stream.write(audio_bytes)
         except Exception as e:
             print(f"AudioHelper: Playback error: {e}")
-    #--------------------------------------------
     
     def set_wm8960_volume_stable(self, volume_level: str):
         """
@@ -434,6 +412,35 @@ class AudioHelper:
             )
 
         self.output_stream.write(audio.tobytes())
+    
+    def play_pcm_stream_chunk(self, pcm_bytes: bytes):
+        """
+        Play raw 16-bit mono PCM chunks from Piper TTS streaming.
+        Hardcoded to Piper's format: 22050 Hz, 1ch, paInt16.
+        """
+        if not pcm_bytes:
+            return
+
+        # Lazy open stream with CORRECT Piper params
+        if not self.output_stream:
+            try:
+                self.output_stream = self.p.open(
+                    format=pyaudio.paInt16,
+                    channels=1,
+                    rate=22050,               # ← critical fix!
+                    output=True,
+                    frames_per_buffer=4096    # match your chunk size
+                )
+                if self.debug:
+                    print("[Audio] Piper streaming output opened @ 22050 Hz mono")
+            except Exception as e:
+                print(f"[Audio] Failed to open Piper stream: {e}")
+                return
+
+        try:
+            self.output_stream.write(pcm_bytes)
+        except Exception as e:
+            print(f"[Audio] Piper stream write error: {e}")
 
     def cleanup(self):
         """Call on shutdown"""
