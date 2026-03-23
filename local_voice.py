@@ -92,26 +92,6 @@ class VoiceAgent:
 
         # =====================================================================================================
         # 3. TTS
-        # try:
-            # r = requests.post(
-            #     f"{SERVER_URL}/tts",
-            #     json={"text": response},
-            #     timeout=30
-            # )
-            # r.raise_for_status()
-
-            # print(f"TTS response status: {r.status_code}, bytes received: {len(r.content):,}")
-
-            # if len(r.content) < 100:
-            #     print("Warning: TTS returned almost no data — check server")
-            #     self.screen.show_idle()
-            #     return
-
-            # # Show speaking indicator
-            # self.screen.show_text("SPEAKING", "Juliet answering…", bg_color=(20,40,20), text_color=(100,255,100))
-            # # Play the audio
-            # self.audio.play_wav_bytes(r.content)
-            #--------------------
         try:
             r = requests.post(
                 f"{SERVER_URL}/tts",

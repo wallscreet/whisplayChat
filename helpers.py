@@ -168,7 +168,7 @@ class ScreenHelper:
 
 
 class AudioHelper:
-    def __init__(self, debug: bool = False, sample_rate: int = 24000, channels: int = 1):
+    def __init__(self, debug: bool = False, sample_rate: int = 48000, channels: int = 1):
         """
         Manages audio input/output for the Whisplay HAT + xAI realtime voice.
         
@@ -427,10 +427,10 @@ class AudioHelper:
                 self.output_stream = self.p.open(
                     format=pyaudio.paInt16,
                     channels=1,
-                    rate=48000,                 # ← matches your model
+                    rate=48000,
                     output=True,
                     output_device_index=1,
-                    frames_per_buffer=4096      # Larger for smoother streaming
+                    frames_per_buffer=4096
                 )
                 if self.debug:
                     print("[Audio] Piper streaming stream opened @ 22050 Hz mono")
