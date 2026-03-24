@@ -1,16 +1,17 @@
-#!/usr/bin/env python3
-
-import asyncio
+import io
 import queue
-import websockets
-import json
-import base64
+import wave
+from clients import XAIClient
+import requests
+import time
 import os
 from dotenv import load_dotenv
-
 from helpers import ScreenHelper, AudioHelper
+from utils import clean_text_for_tts
 
 load_dotenv()
+
+SERVER_URL = "http://192.168.86.35:8000"
 
 class VoiceAgent:
     def __init__(self, debug: bool = True):
@@ -18,15 +19,18 @@ class VoiceAgent:
         self.screen = ScreenHelper(debug=debug)
         self.audio = AudioHelper(debug=debug)
 
-        self.api_key = os.getenv("XAI_API_KEY")
-        if not self.api_key:
-            raise ValueError("XAI_API_KEY missing")
-
         self.screen.board.on_button_press(self.on_button_press)
         self.screen.board.on_button_release(self.on_button_release)
+        self.client = XAIClient()
 
-        self.ws = None
         self.screen.show_idle()
+        
+        # self.messages = [
+        #     {
+        #         "role": "system",
+        #         "content": "You are a helpful assistant running on a mobile device. Please do not include any emojis in your responses."
+        #     }
+        # ]
 
     def on_button_press(self):
         self.screen.show_listening()
@@ -44,84 +48,96 @@ class VoiceAgent:
             except queue.Empty:
                 break
 
-        if self.ws is not None:
-            try:
-                asyncio.run_coroutine_threadsafe(
-                    self.ws.send(json.dumps({"type": "input_audio_buffer.commit"})),
-                    asyncio.get_running_loop()
-                )
-            except Exception as e:
-                if self.debug:
-                    print(f"Commit failed (normal if ws closed): {e}")
-
         if self.debug:
-            print("RELEASE → committed")
+            print("RELEASE → sending request")
 
-    async def connect_and_run(self):
-        url = "wss://api.x.ai/v1/realtime"
-        headers = {"Authorization": f"Bearer {self.api_key}"}
+        # Get last recording
+        wav_bytes = self.audio.get_last_recording_bytes()
 
-        async with websockets.connect(url, additional_headers=headers) as self.ws:
-            await self.ws.send(json.dumps({
-                "type": "session.update",
-                "session": {
-                    "instructions": "You are Grok on a portable Whisplay HAT. Be witty, concise, helpful.",
-                    "voice": "eve",
-                    "turn_detection": {"type": "server_vad"},
+        # =====================================================================================================
+        # 1. STT
+        try:
+            files = {"file": ("input.wav", wav_bytes, "audio/wav")}
+            r = requests.post(f"{SERVER_URL}/stt", files=files, timeout=15)
+            r.raise_for_status()
+            user_text = r.json()["text"]
+            if self.debug: print(f"You: {user_text}")
+        except Exception as e:
+            print(f"STT error: {e}")
+            self.screen.show_idle()
+            return
+
+        # =====================================================================================================
+        # 2. LLM
+        try:
+            model = "grok-4-1-fast-non-reasoning"
+            
+            messages = [
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant named Juliet running on a portable device. Please keep your responses short and concise and do not use any emojis."
+                },
+                {
+                    "role": "user",
+                    "content": user_text
                 }
-            }))
+            ]
+            
+            response = self.client.get_response(model=model, messages=messages)
+            response_cleaned = clean_text_for_tts(text=response)
+            
+            if self.debug: print(f"Grok: {response}")
+        
+        except Exception as e:
+            print(f"LLM error: {e}")
+            self.screen.show_idle()
+            return
 
-            if self.debug: print("Connected")
+        # =====================================================================================================
+        # 3. TTS
+        try:
+            r = requests.post(
+                f"{SERVER_URL}/tts",
+                json={"text": response_cleaned},
+                stream=True,
+                timeout=45
+            )
+            r.raise_for_status()
 
-            sender_task = asyncio.create_task(self._audio_sender())
+            self.screen.show_text(
+                "SPEAKING",
+                "Juliet answering…",
+                bg_color=(20,40,20),
+                text_color=(100,255,100)
+            )
 
-            try:
-                while True:
-                    message = await self.ws.recv()
-                    data = json.loads(message)
+            chunk_count = 0
+            for chunk in r.iter_content(chunk_size=8192):
+                if chunk:
+                    chunk_count += 1
+                    self.audio.play_piper_stream_chunk(chunk)
+                    if self.debug and chunk_count % 5 == 0:
+                        print(f"[Audio] Played {chunk_count} Piper chunks")
 
-                    if data.get("type") == "response.output_audio.delta":
-                        b64 = data.get("delta")
-                        if b64:
-                            audio_bytes = base64.b64decode(b64)
-                            self.audio.play_audio_chunk(audio_bytes)
+            # Small drain to avoid cutoff at end
+            time.sleep(0.1)
 
-                    elif data.get("type") == "response.output_audio_transcript.delta":
-                        if self.debug:
-                            print(f"Text: {data.get('delta', '')}")
-
-                    elif data.get("type") in ["response.done", "response.audio.done"]:
-                        self.screen.show_idle()
-                        if self.debug: print("Done")
-
-            except Exception as e:
-                print(f"WS error: {e}")
-            finally:
-                sender_task.cancel()
-
-    async def _audio_sender(self):
-        while True:
-            try:
-                chunk = await asyncio.get_running_loop().run_in_executor(
-                    None, self.audio.get_next_chunk
-                )
-                if chunk is None:
-                    await asyncio.sleep(0.01)
-                    continue
-
-                b64 = base64.b64encode(chunk).decode('utf-8')
-                await self.ws.send(json.dumps({
-                    "type": "input_audio_buffer.append",
-                    "audio": b64
-                }))
-                if self.debug: print("Chunk sent")
-            except Exception as e:
-                print(f"Sender error: {e}")
-                break
+        except Exception as e:
+            print("TTS streaming error:")
+            import traceback
+            traceback.print_exc()
+            
+        # =====================================================================================================
+        
+        finally:
+            self.screen.show_idle()
+            if self.debug: print("Done")
 
     def run(self):
+        print("VoiceAgent running...")
         try:
-            asyncio.run(self.connect_and_run())
+            while True:
+                time.sleep(0.1)
         except KeyboardInterrupt:
             print("Shutdown")
         finally:

@@ -134,7 +134,7 @@ class ScreenHelper:
 
         # Processing / Thinking screen
         self._cache["processing"] = self._make_text_image(
-            text="🤔...",
+            text="THINKING...",
             sub_text="Juliet thinking...",
             bg_color=(20, 20, 40),
             text_color=(180, 180, 255)
@@ -171,11 +171,6 @@ class AudioHelper:
     def __init__(self, debug: bool = False, sample_rate: int = 48000, channels: int = 1):
         """
         Manages audio input/output for the Whisplay HAT + xAI realtime voice.
-        
-        Args:
-            debug: If True, saves last utterance to /tmp/last_utterance.wav for inspection
-            sample_rate: Target rate for xAI (24000 Hz mono)
-            channels: 1 = mono (required for xAI)
         """
         self.debug = debug
         self.sample_rate = sample_rate
@@ -186,7 +181,7 @@ class AudioHelper:
         self._setup_mixer()
 
         self.p = pyaudio.PyAudio()
-        self.audio_queue = queue.Queue(maxsize=80) # changed to 80 from 0
+        self.audio_queue = queue.Queue(maxsize=80)
 
         self.input_stream: Optional[pyaudio.Stream] = None
         self.output_stream: Optional[pyaudio.Stream] = None
@@ -412,36 +407,7 @@ class AudioHelper:
             )
 
         self.output_stream.write(audio.tobytes())
-    
-    # def play_piper_stream_chunk(self, pcm_bytes: bytes):
-    #     """
-    #     Play raw 16-bit mono PCM chunks from Piper synthesize().
-    #     Fixed format: 22050 Hz, 1 channel, paInt16.
-    #     """
-    #     if not pcm_bytes:
-    #         return
 
-    #     # Open stream lazily with Piper's known params
-    #     if not self.output_stream:
-    #         try:
-    #             self.output_stream = self.p.open(
-    #                 format=pyaudio.paInt16,
-    #                 channels=1,
-    #                 rate=48000,
-    #                 output=True,
-    #                 output_device_index=1,
-    #                 frames_per_buffer=4096
-    #             )
-    #             if self.debug:
-    #                 print("[Audio] Piper streaming stream opened @ 22050 Hz mono")
-    #         except Exception as e:
-    #             print(f"[Audio] Failed to open Piper output stream: {e}")
-    #             return
-
-    #     try:
-    #         self.output_stream.write(pcm_bytes)
-    #     except Exception as e:
-    #         print(f"[Audio] Piper write error: {e}")
     def play_piper_stream_chunk(self, pcm_bytes: bytes):
         """
         Play raw 16-bit mono PCM from Piper (22050 Hz) by resampling to 48000 Hz.
@@ -460,7 +426,7 @@ class AudioHelper:
         target_sr = 48000
         num_new_samples = int(len(pcm_array) * target_sr / orig_sr)
 
-        # Use scipy resample (Fourier method, good for audio)
+        # Use scipy resample (Fourier method)
         resampled_float = resample(pcm_array, num_new_samples)
 
         # Clip to avoid distortion, convert back to int16
@@ -475,9 +441,9 @@ class AudioHelper:
                 self.output_stream = self.p.open(
                     format=pyaudio.paInt16,
                     channels=1,
-                    rate=target_sr,          # 48000
+                    rate=target_sr,          # 48000 for pi zero 2w
                     output=True,
-                    frames_per_buffer=8192,  # Larger buffer helps with resampling variability
+                    frames_per_buffer=8192,
                 )
                 print(f"[Audio] Piper stream opened @ {target_sr} Hz (resampled)")
             except Exception as e:
