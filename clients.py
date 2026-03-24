@@ -223,3 +223,14 @@ class IsoClient:
 
     def get_tools(self):
         return self._tools
+    
+    def build_prompt(self, user_input: str):
+        # Get Chat history
+        chat_history = self.message_cache.get_chat_history()
+        # Memory context
+        # Knowledge context
+        # Facts context
+        # Contents of workspace directory
+        # 
+        return True
+        
