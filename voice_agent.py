@@ -1,10 +1,7 @@
-import io
 import queue
-import wave
 from clients import XAIClient
 import requests
 import time
-import os
 from dotenv import load_dotenv
 from helpers import ScreenHelper, AudioHelper
 from utils import clean_text_for_tts
